@@ -2,9 +2,17 @@
 
 # Config passwords
 apt-get install libpam-cracklib -y
-apt-get install libpam-pwquality -y
+apt-get install libpam-pwquality -yt
+touch /etc/security/opasswd
+echo "password required pam_cracklib.so retry=3 minlen=12 difok=4" > /etc/pam.d/common-password
+echo "password required pam_unix.so sha512 remember=5 use_authok" >> /etc/pam.d/common-password
+#!/bin/bash
+users=$(awk -F: '{ print $1}' /etc/passwd)
 
-passwd -n 12 -x 90
+for value in $users
+do
+      chage -m 12 -M 90 -W 7 $value
+done
 
 # TODO: rest of pam
 awk -F : '{if ($3<1000) print $1}' /etc/passwd > /etc/ftpusers
