@@ -5,8 +5,9 @@ apt-get install libpam-cracklib -y
 apt-get install libpam-pwquality -yt
 touch /etc/security/opasswd
 echo "password required pam_cracklib.so retry=3 minlen=12 difok=4" > /etc/pam.d/common-password
-echo "password required pam_unix.so sha512 remember=5 use_authok" >> /etc/pam.d/common-password
-#!/bin/bash
+echo "password sufficient pam_unix.so sha512 remember=5 use_authok shadow" >> /etc/pam.d/common-password
+echo "password required pam_deny.so" >> /etc/pam.d/common-password
+
 users=$(awk -F: '{ print $1}' /etc/passwd)
 
 for value in $users
@@ -40,9 +41,21 @@ while getopts ":n:p:" o; do
             l=${OPTARG}
             passwd -l ${l}
             ;;
+        d)
+            d=${OPTARG}
+            userdel ${OPTARG} # Keep home directory just in case
+            ;;
         c)
             c=${OPTARG}
             chpassd_list+=(${c})
+            ;;
+        i)
+            i=${OPTARG}
+            apt-get install ${i} -y
+            ;;
+        u)
+            u=${OPTARG}
+            apt-get install ${d} -y
             ;;
     esac
 done
