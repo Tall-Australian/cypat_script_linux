@@ -24,6 +24,35 @@ ufw deny telnet
 ufw allow ssh # TODO: More detail on protocols
 ufw enable
 
+chpassd_list=()
+empty=()
+
+# Arg parsing and user adding time
+while getopts ":n:p:" o; do
+    case "${o}" in
+        n)
+            n=${OPTARG}
+            IFS=':' read -a arr <<< "$line"
+            useradd -m -U ${arr[0]}
+            echo ${arr[1]} | passwd --stdin ${arr[0]}
+            ;;
+        l)
+            l=${OPTARG}
+            passwd -l ${l}
+            ;;
+        c)
+            c=${OPTARG}
+            chpassd_list+=(${c})
+            ;;
+    esac
+done
+
+if [ ! "$chpassd_list" ==  "$empty" ]; then
+      for line in $chpassd_list; do
+          echo "$line"
+      done | chpassd
+fi
+
 # TODO: mas
 
 apt-get update -y && apt-get upgrade -y
