@@ -109,8 +109,22 @@ echo "X11Forwarding no" >> /etc/ssh/sshd_config
 echo "MaxAuthTries 5" >> /etc/ssh/sshd_config
 echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
 echo "HostbasedAuthentication no" >> /etc/ssh/sshd_config
-chown root:root /etc/ssh/sshd_config
-chmod 600 /etc/ssh/sshd_config
+
+echo "Securing important files..."
+chown root:root /boot/efi
+chown root:root /sbin
+chown root:root /bin
+chown root:root /usr
+chown root:root /etc
+chown root:root /var
+chown root:root /lib
+chmod 744 /boot/efi
+chmod 755 /sbin
+chmod 755 /bin
+chmod 755 /usr
+chmod 755 /etc
+chmod 755 /var
+chmod 755 /lib
 
 # TODO: mas
 
