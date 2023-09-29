@@ -7,14 +7,21 @@ cat /etc/ftpusers > /etc/ftpusers.bak
 cat /etc/ssh/sshd_config > /etc/ssh/sshd_config.bak
 cat /etc/selinux/config > /etc/selinux/config.bak
 
-# Config passwords
-echo "Configuring PAM and updating password policy..."
+# Config PAM
+echo "Configuring PAM..."
+
+echo "Configuring common-password..."
 apt-get install libpam-cracklib -y
 apt-get install libpam-pwquality -yt
 touch /etc/security/opasswd
 echo "password required pam_cracklib.so retry=3 minlen=12 difok=4" > /etc/pam.d/common-password
-echo "password sufficient pam_unix.so sha512 remember=5 use_authok shadow" >> /etc/pam.d/common-password
-echo "password required pam_deny.so" >> /etc/pam.d/common-password
+echo "password [success=1 default=ignore] pam_unix.so sha512 remember=5 use_authok shadow" >> /etc/pam.d/common-password
+echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
+echo "password required pam_permit.so" >> /etc/pam.d/common-password
+echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
+
+echo "Configuring common-auth..."
+# TODO: this
 
 users=$(awk -F: '{ print $1}' /etc/passwd)
 
