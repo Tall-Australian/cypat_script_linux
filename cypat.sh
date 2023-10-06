@@ -12,7 +12,6 @@ echo "Configuring PAM..."
 
 echo "Configuring common-password..."
 apt-get install libpam-cracklib -y
-apt-get install libpam-pwquality -yt
 touch /etc/security/opasswd
 echo "password required pam_cracklib.so retry=3 minlen=12 difok=4" > /etc/pam.d/common-password
 echo "password [success=1 default=ignore] pam_unix.so sha512 remember=5 use_authok shadow" >> /etc/pam.d/common-password
