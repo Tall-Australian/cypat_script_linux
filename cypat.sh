@@ -97,7 +97,6 @@ apt-get uninstall dwarf-fortress
 apt-get uninstall tor
 apt-get uninstall nmap
 
-
 # Write new sshd_config
 echo "Configuring ssh..."
 
