@@ -26,7 +26,7 @@ echo "minlen=12" >> /etc/security/pwquality.conf
 echo "minclass=4" >> /etc/security/pwquality.conf
 echo "retry=3" >> /etc/security/pwquality.conf
 
-users=$(awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd)
+users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
 
 for value in $users
 do
