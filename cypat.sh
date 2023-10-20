@@ -15,9 +15,15 @@ touch /etc/security/opasswd
 source /etc/os-release
 
 apt-get install libpam-pwquality -y
+echo "password required pam_pwquality.so" >> /etc/pam.d/common-password
+echo "password [success=1 default=ignore] pam_unix.so yescrypt remember=5 use_authok shadow" >> /etc/pam.d/common-password
+echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
+echo "password required pam_permit.so" >> /etc/pam.d/common-password
+echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
 echo "difok=4" > /etc/security/pwquality.conf
 echo "minlen=12" >> /etc/security/pwquality.conf
 echo "minclass=4" >> /etc/security/pwquality.conf
+echo "retry=3" >> /etc/security/pwquality.conf
 
 echo "Configuring common-auth..."
 # TODO: rest of pam
