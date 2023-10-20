@@ -26,6 +26,8 @@ echo "minlen=12" >> /etc/security/pwquality.conf
 echo "minclass=4" >> /etc/security/pwquality.conf
 echo "retry=3" >> /etc/security/pwquality.conf
 
+users=$(awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd)
+
 for value in $users
 do
       lchage -m 12 -M 90 -W 7 $value
