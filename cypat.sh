@@ -6,6 +6,7 @@ cat /etc/pam.d/common-password > /etc/pam.d/common-password.bak
 cat /etc/ftpusers > /etc/ftpusers.bak
 cat /etc/ssh/sshd_config > /etc/ssh/sshd_config.bak
 cat /etc/selinux/config > /etc/selinux/config.bak
+cat /etc/login.defs > /etc/login.defs.bak
 
 # Config PAM
 echo "Configuring PAM..."
@@ -24,6 +25,13 @@ echo "difok=4" > /etc/security/pwquality.conf
 echo "minlen=12" >> /etc/security/pwquality.conf
 echo "minclass=4" >> /etc/security/pwquality.conf
 echo "retry=3" >> /etc/security/pwquality.conf
+
+for value in $users
+do
+      lchage -m 12 -M 90 -W 7 $value
+done
+
+sed -i "s/^PASS_MIN_DAYS/PASS_MIN_DAYS 12; s/^PASS_MAX_DAYS/PASS_MAX_DAYS 90" /etc/login.defs
 
 echo "Configuring common-auth..."
 # TODO: rest of pam
