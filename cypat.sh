@@ -41,8 +41,6 @@ ufw deny telnet
 ufw allow ssh # TODO: More detail on protocols
 ufw enable
 
-IFS=$'\n'; echo "${chpasswd_list[*]}" | chpasswd
-
 # Arg parsing and user adding time
 echo "Manging users and applications..."
 while getopts ":n:l:d:i:u:s:g:" o; do
