@@ -83,13 +83,12 @@ while getopts ":n:l:d:i:u:s:g:" o; do
     esac
 done
 
-chpasswd_list=()
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
 me=$(who ran sudo | awk '{print $1}')
 
-if ! type pwgen &>/dev/null
+if ! type makepasswd &>/dev/null
 then
-      apt-get install pwgen
+      apt-get install makepasswd
 fi
 
 for value in $users; do
@@ -97,8 +96,7 @@ for value in $users; do
       
       if [ "$value" != "$me" ]
       then
-            password=$(pwgen -N 1 -s -y)
-            chpasswd_list+=("$value:$password")
+            mkpasswd -l 16 $value > /dev/null
       fi
 done
 
