@@ -7,6 +7,7 @@ cat /etc/ftpusers > /etc/ftpusers.bak
 cat /etc/ssh/sshd_config > /etc/ssh/sshd_config.bak
 cat /etc/selinux/config > /etc/selinux/config.bak
 cat /etc/login.defs > /etc/login.defs.bak
+cat /etc/sysctl.conf > /etc/sysctl.conf.bak
 
 # Config PAM
 echo "Configuring PAM..."
@@ -106,7 +107,6 @@ apt-get install rkhunter -y && rkhunter --propupd && rkhunter -c --skip-keypress
 
 echo "Configuring and running clamav..."
 apt-get install clamav clamav-daemon -y
-
 mkdir /var/log/clamav
 mkdir /root/quarantine
 touch /var/log/clamav/clamdscan.log
@@ -122,7 +122,7 @@ clamdscan -m --remove --fdpass /
 
 echo "Handling common applications..."
 systemctl stop nginx -y
-apt purge wireshark dwarf-fortress tor nmap ophcrack telnet crack hashcat hashcat-legacy john rainbowcrack -y
+apt purge wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat -y
 
 apt autoremove -y
 
@@ -131,6 +131,43 @@ echo "Configuring ssh..."
 
 # I know not how this works, ChatGPT wrote it for me.
 sed -i -e 's/^#?LogLevel .*/LogLevel VERBOSE/; s/^#?Ciphers .*/Ciphers aes128-ctr,aes192-ctr,aes256-ctr/; s/^#?HostKeyAlgorithms .*/HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss/; s/^#?KexAlgorithms .*/KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha25/; s/^#?MACs .*/MACs hmac-sha2-256,hmac-sha2-512,hmac-sha1/; s/^#?PermitRootLogin .*/PermitRootLogin no/; s/^#?UsePAM .*/UsePAM yes/; s/^#?AllowTcpForwarding .*/AllowTcpForwarding no/; s/^#?AllowStreamLocalForwarding .*/AllowStreamLocalForwarding no/; s/^#?GatewayPorts .*/GatewayPorts no/; s/^#?PermitTunnel .*/PermitTunnel no/; s/^#?X11Forwarding .*/X11Forwarding no/' /etc/ssh/sshd_config
+
+# Write new sysctl.conf
+echo "net.ipv4.ip_forward = 0" > /etc/sysctl.conf
+echo "net.ipv4.conf.default.accept_source_route = 0" >> /etc/sysctl.conf
+echo "kernel.sysrq = 0" >> /etc/sysctl.conf
+echo "kernel.core_uses_pid = 1" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_synack_retries = 5" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.send_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.send_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.accept_source_route = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.accept_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.secure_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.log_martians = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.accept_source_route = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.accept_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.secure_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.icmp_echo_ignore_broadcasts = 1" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_syncookies = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.rp_filter = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.router_solicitations = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.accept_ra_rtr_pref = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.accept_ra_pinfo = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.accept_ra_defrtr = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.autoconf = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.dad_transmits = 0" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.max_addresses = 1" >> /etc/sysctl.conf
+echo "kernel.exec-shield = 2" >> /etc/sysctl.conf
+echo "kernel.randomize_va_space=2" >> /etc/sysctl.conf
+echo "fs.file-max = 65535" >> /etc/sysctl.conf
+echo "kernel.pid_max = 65536" >> /etc/sysctl.conf
+echo "net.ipv4.ip_local_port_range = 2000 65000" >> /etc/sysctl.conf
+echo "net.ipv4.tcp_rfc1337=1" >> /etc/sysctl.conf
+echo "kernel.panic=10" >> /etc/sysctl.conf
+echo "fs.protected_hardlinks=1" >> /etc/sysctl.conf
+echo "fs.protected_symlinks=1" >> /etc/sysctl.conf
 
 # TODO: mas
 
