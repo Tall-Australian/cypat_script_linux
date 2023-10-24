@@ -38,13 +38,27 @@ rm -f /etc/ftpusers
 echo "Installing and configuring ufw..."
 apt-get install ufw -y
 ufw disable
-ufw deny telnet
-ufw allow ssh # TODO: More detail on protocols
+ufw default deny incoming
+ufw default allow outgoing
+ufw deny telnet # Deny insecure protocols
+ufw deny tftp
+ufw deny 3389
+ufw deny 5900
+ufw deny 5901
+ufw deny 5902
+ufw deny 512
+ufw deny 513
+ufw deny 514
+ufw deny ldap
+ufw deny 50000 # Deny C2 servers
+ufw deny 55553
+ufw allow out https
+ufw limit OpenSSH
 ufw enable
 
 # Arg parsing and user adding time
 echo "Manging users and applications..."
-while getopts ":n:l:d:i:u:s:g:" o; do
+while getopts ":n:l:d:i:u:s:g:o:" o; do
     case "${o}" in
         n)
             n=${OPTARG}
@@ -79,6 +93,13 @@ while getopts ":n:l:d:i:u:s:g:" o; do
             IFS=':' read -a arr <<< "$line"
             usermod -aG ${arr[1]} ${arr[0]}
             ;;
+        o)
+            ufw disable
+            ufw default deny outgoing
+            ufw allow ssh
+            ufw allow https
+            ufw allow dns
+            echo "Default deny outgoing enabled."
     esac
 done
 
@@ -132,7 +153,9 @@ echo "Configuring ssh..."
 # I know not how this works, ChatGPT wrote it for me.
 sed -i -e 's/^#?LogLevel .*/LogLevel VERBOSE/; s/^#?Ciphers .*/Ciphers aes128-ctr,aes192-ctr,aes256-ctr/; s/^#?HostKeyAlgorithms .*/HostKeyAlgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss/; s/^#?KexAlgorithms .*/KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha25/; s/^#?MACs .*/MACs hmac-sha2-256,hmac-sha2-512,hmac-sha1/; s/^#?PermitRootLogin .*/PermitRootLogin no/; s/^#?UsePAM .*/UsePAM yes/; s/^#?AllowTcpForwarding .*/AllowTcpForwarding no/; s/^#?AllowStreamLocalForwarding .*/AllowStreamLocalForwarding no/; s/^#?GatewayPorts .*/GatewayPorts no/; s/^#?PermitTunnel .*/PermitTunnel no/; s/^#?X11Forwarding .*/X11Forwarding no/' /etc/ssh/sshd_config
 
-# Write new sysctl.conf
+echo "Configuring the kernel..."
+
+echo "Configuring /etc/sysctl.conf..."
 echo "net.ipv4.ip_forward = 0" > /etc/sysctl.conf
 echo "net.ipv4.conf.default.accept_source_route = 0" >> /etc/sysctl.conf
 echo "kernel.sysrq = 0" >> /etc/sysctl.conf
@@ -168,6 +191,9 @@ echo "net.ipv4.tcp_rfc1337=1" >> /etc/sysctl.conf
 echo "kernel.panic=10" >> /etc/sysctl.conf
 echo "fs.protected_hardlinks=1" >> /etc/sysctl.conf
 echo "fs.protected_symlinks=1" >> /etc/sysctl.conf
+
+echo "Disabling USBs..."
+echo "blacklist usb-storage" >> /etc/modprobe.d/blacklist.conf
 
 # TODO: mas
 
