@@ -42,18 +42,17 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw deny telnet # Deny insecure protocols
 ufw deny tftp
-ufw deny 3389
-ufw deny 5900
-ufw deny 5901
-ufw deny 5902
+ufw deny rdp
+ufw deny vnc
 ufw deny 512
 ufw deny 513
 ufw deny 514
+ufw deny rsh
 ufw deny ldap
 ufw deny 50000 # Deny C2 servers
 ufw deny 55553
 ufw allow out https
-ufw limit OpenSSH
+ufw limit ssh
 ufw enable
 
 # Arg parsing and user adding time
