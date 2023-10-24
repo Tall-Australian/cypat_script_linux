@@ -17,7 +17,7 @@ touch /etc/security/opasswd
 source /etc/os-release
 
 apt-get install libpam-pwquality -y
-echo "password required pam_pwquality.so" >> /etc/pam.d/common-password
+echo "password required pam_pwquality.so" > /etc/pam.d/common-password
 echo "password [success=1 default=ignore] pam_unix.so yescrypt remember=5 use_authok shadow" >> /etc/pam.d/common-password
 echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
 echo "password required pam_permit.so" >> /etc/pam.d/common-password
@@ -105,9 +105,9 @@ done
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
 me=$(who ran sudo | awk '{print $1}')
 
-if ! type makepasswd &>/dev/null
+if ! type mkpasswd &>/dev/null
 then
-      apt-get install makepasswd
+      apt-get install whois
 fi
 
 for value in $users; do
