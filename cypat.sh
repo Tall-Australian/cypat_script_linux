@@ -49,6 +49,12 @@ ufw deny 513
 ufw deny 514
 ufw deny 50000 # Deny C2 servers
 ufw deny 55553
+ufw deny 1502
+ufw deny 161
+ufw deny 502
+ufw deny 102
+ufw deny 20000
+ufw deny 44818
 ufw allow https
 ufw limit ssh
 ufw enable
