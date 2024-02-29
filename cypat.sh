@@ -144,16 +144,22 @@ echo "0 0 * * 0 root /usr/bin/clamdscan -m --fdpass --move=/root/quarantine /" >
 systemctl restart clamav-daemon
 clamdscan -m --remove --fdpass /
 
+echo "Installing intrusion prevention and detection systems..."
+apt-get install fail2ban -y
+# TODO: configure fail2ban
+apt-get install snort -y
+# TODO: configure snort
+apt-get install auditd -y
+# TODO: configure auditd
+
 echo "Handling common applications..."
 systemctl stop nginx -y
-apt purge wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat -y
+apt purge wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat -y
 
 apt autoremove -y
 
 # Write new sshd_config
 echo "Configuring ssh..."
-
-# I know not how this works, ChatGPT wrote it for me.
 wget -o /etc/ssh/sshd_config https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
 
 echo "Configuring the kernel..."
