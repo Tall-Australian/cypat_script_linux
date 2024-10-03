@@ -62,7 +62,7 @@ me=$(who ran sudo | awk '{print $1}')
 admins=( $( awk '/<pre>/,/<b>/' $1 | grep -v '[^a-zA-Z0-9]' | grep -v '^$' ) )
 who_should_be=($(awk '/<pre/,/</pre>/' $1 | grep -v '[^a-zA-Z0-9]' | grep -v '^$'))
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
-sudoers=($(getent group sudo | awk -F: 'print $4' | sed 's/,/\n/g'))
+sudoers=($(getent group sudo | awk -F: '{print $4}' | sed 's/,/\n/g'))
 
 for user in $who_should_be; do
     useradd -m $user # If the user already exists, this does nothing. Easier than checking first.
@@ -78,7 +78,7 @@ for user in $users; do
     if [[ " ${admins} " =~ [[:space:]]${user}[[:space:]] ]]; then
         usermod -aG sudo
         continue
-    elif [[ " ${sudoers} " =~ [[:space:]]${user}[[:space:]] && "${user}" != "${me}"]]; then
+    elif [[ " ${sudoers} " =~ [[:space:]]${user}[[:space:]] && "${user}" != "${me}" ]]; then
         gpasswd --delete $user sudo
     fi
 done
