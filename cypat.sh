@@ -38,82 +38,57 @@ rm -f /etc/ftpusers
 echo "Installing and configuring ufw..."
 apt-get install ufw -y
 ufw disable
-ufw default deny incoming
-ufw default allow outgoing
-ufw deny telnet # Deny insecure protocols
-ufw deny tftp
-ufw deny 3389
-ufw deny 5900
-ufw deny 512
-ufw deny 513
-ufw deny 514
-ufw deny 50000 # Deny C2 servers
-ufw deny 55553
-ufw deny 1502
-ufw deny 161
-ufw deny 502
-ufw deny 102
-ufw deny 20000
-ufw deny 44818
+ufw default deny
 ufw allow https
 ufw limit ssh
 ufw enable
 
 # Arg parsing and user adding time
 echo "Manging users and applications..."
-while getopts ":n:l:d:i:u:s:g:o:" o; do
+while getopts "i:u" o; do
     case "${o}" in
-        n)
-            n=${OPTARG}
-            IFS=':' read -a arr <<< "$line"
-            useradd -m -U ${arr[0]}
-        l)
-            l=${OPTARG}
-            passwd -l ${l}
-            ;;
-        d)
-            d=${OPTARG}
-            userdel ${OPTARG} # Keep home directory just in case
-            ;;
-        
         i)
             i=${OPTARG}
             apt-get install ${i} -y
             ;;
         u)
             u=${OPTARG}
-            apt-get remove ${d} -y
+            apt-get remove ${u} -y
             ;;
-        s)
-            # SELinux
-            apt-get install selinux-basics selinux-policy-default auditd -y
-            selinux-activate
-            echo "SELINUX=enforcing" > /etc/selinux/config
-            echo "SELINUXTYPE=strict" >> /etc/selinux/config
-            echo "SELinux has been enabled."
-            ;;
-        g)
-            IFS=':' read -a arr <<< "$line"
-            usermod -aG ${arr[1]} ${arr[0]}
-            ;;
-        o)
-            ufw disable
-            ufw default deny outgoing
-            ufw allow ssh
-            ufw allow https
-            ufw allow dns
-            echo "Default deny outgoing enabled."
     esac
 done
 
-users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
 me=$(who ran sudo | awk '{print $1}')
+admins=( $( awk '/<pre>/,/<b>/' $1 | grep -v '[^a-zA-Z0-9]' | grep -v '^$' ) )
+who_should_be=($(awk '/<pre/,/</pre>/' $1 | grep -v '[^a-zA-Z0-9]' | grep -v '^$'))
+users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
+sudoers=($(getent group sudo | awk -F: 'print $4' | sed 's/,/\n/g'))
+
+for user in $who_should_be; do
+    useradd -m $user # If the user already exists, this does nothing. Easier than checking first.
+done
+
+# Probably not very efficient
+for user in $users; do
+    if [[ ! " ${who_should_be[*]} " =~ [[:space:]]${user}[[:space:]] ]]; then
+        userdel $user # Delete the account; keep the files
+        continue
+    fi
+
+    if [[ " ${admins} " =~ [[:space:]]${user}[[:space:]] ]]; then
+        usermod -aG sudo
+        continue
+    elif [[ " ${sudoers} " =~ [[:space:]]${user}[[:space:]] && "${user}" != "${me}"]]; then
+        gpasswd --delete $user sudo
+    fi
+done
 
 if ! type mkpasswd &>/dev/null
 then
       apt-get install whois
 fi
 
+# Whoever survives the purge gets a shiny new password
 for value in $users; do
       lchage -m 12 -M 90 -W 7 $value
       
