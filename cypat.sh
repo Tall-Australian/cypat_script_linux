@@ -7,7 +7,7 @@ then
     REPORT_FILE="/home/${me}/report"
 fi
 
-echo "Run by: $me" > ${PREPORT_FILE}
+echo "Run by: $me" > ${REPORT_FILE}
 
 if [ "$EUID" -ne 0 ]
 then 
@@ -47,12 +47,15 @@ while getopts "i:u:dr:h" o; do
             ;;
         h)
             echo "Usage: ${0} -r <readme> [-i <package>] [-u <package>] [-h] [-d]"
+            exit
+            ;;
     esac
 done
 
 if [ -z "$README" ]
 then
     echo "Usage: ${0} -r <readme> [-i <package>] [-u <package>] [-h] [-d]"
+    exit 1
 fi
 
 # Create backups
