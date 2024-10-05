@@ -2,7 +2,7 @@
 
 if [ "$EUID" -ne 0 ]
 then 
-    echo "This script requires root permissions to run properly."
+    echo "This script requires root permissions to run properly. Failing." >&2
     exit 1
 fi
 
@@ -22,9 +22,9 @@ while getopts "i:u:dr:h" o; do
             
             if apt-get install ${i} -y > /dev/null
             then
-                echo "Installed package ${i}" >> ${REPORT_FILE}
+                echo "Installed package ${i}" | tee -a ${REPORT_FILE}
             else
-                echo "Failed to install package ${i}" >> ${REPORT_FILE}
+                echo "Failed to install package ${i}" | tee -a ${REPORT_FILE} >&2
             fi
             ;;
         u)
@@ -32,9 +32,9 @@ while getopts "i:u:dr:h" o; do
             
             if apt-get remove ${u} -y > /dev/null
             then
-                echo "Removed package ${i}" >> ${REPORT_FILE}
+                echo "Removed package ${i}" | tee -a ${REPORT_FILE}
             else
-                echo "Failed to remove package ${i}" >> ${REPORT_FILE}
+                echo "Failed to remove package ${i}" | tee -a ${REPORT_FILE} >&2
             fi
             ;;
         d)
@@ -54,6 +54,7 @@ done
 
 if [ -z "$README" ]
 then
+    echo "No read me was passed to the script. Failing." >&2
     echo "Usage: ${0} -r <readme> [-i <package>] [-u <package>] [-h] [-d]"
     exit 1
 fi
@@ -134,17 +135,18 @@ admin_diff=($(diff -w <(echo "${sudoers[*]}" | tr ' ' '\n') <(echo "${admins[*]}
 if [ ! -z "$CYPAT_DEBUG" ]
 then
     echo "DEBUG: Users gathered from readme:"
-    echo "${who_should_be[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${who_should_be[@]}"
     echo "DEBUG: Users gathered from passwd:"
-    echo "${users[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${users[@]}"
     echo "DEBUG: Users who should be admins according to the readme:"
-    echo "${admins[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${admins[@]}"
     echo "DEBUG: Users who are sudoers:"
-    echo "${sudoers[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${sudoers[@]}"
     echo "DEBUG: Difference between users who exist and users who should exist:"
-    echo "${user_diff[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${user_diff[@]}"
     echo "DEBUG: Difference between sudoers and peolpe who should be sudoers:"
-    echo "${admin_diff[*]}" | tr ' ' '\n'
+    printf '    %s\n' "${admin_diff[@]}"
+    read -p "Press enter to continue" dummy
 fi | tee -a ${REPORT_FILE}
 
 # Users to add
@@ -181,30 +183,35 @@ then
 fi
 
 # Whoever survives the purge gets a shiny new password
-users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
+users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
 for value in ${users[*]}; do
     chage -m 12 -M 90 -W 7 $value
       
     if [ "$value" != "$me" ]
     then
-        LC_ALL=C tr -dc '[:graph:]' </dev/urandom | head -c 16 | read tmp_passwd
+        LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16 | read tmp_passwd
         echo "${value}:${tmp_passwd}"
     fi
 done | chpasswd
 
 # just scrub the password a little bit
-LC_ALL=C tr -dc '[:graph:]' </dev/urandom | head -c 16 | read tmp_passwd
+LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16 | read tmp_passwd
 
 # Malware protection
 echo "Installing and running malware protection..."
 
 echo "Handling rkhunter..."
-if apt-get install rkhunter -y > /dev/null && rkhunter -c --skip-keypress > /dev/null
+if apt-get install rkhunter -y > /dev/null 
 then
     echo "Installed rkhunter" | tee -a ${REPORT_FILE}
-    if ! rkhunter --propupd > /dev/null
+    if rkhunter --propupd > /dev/null && rkhunter -c --skip-keypress > /dev/null
+    then
+        echo "Successfuly ran rkhunter" | tee -a ${REPORT_FILE}
+    else
+        echo "rkhunter failed" | tee -a ${REPORT_FILE} >&2
+    fi
 else
-    echo "Failed to install and/or run rkhunter" | tee -a ${REPORT_FILE} /dev/stderr > /dev/null
+    echo "Failed to install rkhunter" | tee -a ${REPORT_FILE} >&2
 fi
 
 echo "Configuring and running clamav..."
@@ -237,10 +244,10 @@ then
     then
         echo "Ran clamdscan" | tee -a ${REPORT_FILE}
     else
-        echo "Failed to run clamdscan" | tee -a ${REPORT_FILE} /dev/stderr > /dev/null
+        echo "Failed to run clamdscan" | tee -a ${REPORT_FILE} >&2
     fi
 else
-    echo "Failed to install clamav" | tee -a ${REPORT_FILE} /dev/stderr > /dev/null
+    echo "Failed to install clamav" | tee -a ${REPORT_FILE} >&2
 fi
 
 echo "Installing intrusion prevention and detection systems..."
