@@ -133,37 +133,43 @@ admin_diff=($(diff -w <(echo "${sudoers[*]}" | tr ' ' '\n') <(echo "${admins[*]}
 
 if [ ! -z "$CYPAT_DEBUG" ]
 then
-    echo "DEBUG: Users gathered from readme: ${who_should_be[*]}"
-    echo "DEBUG: Users gathered from passwd: ${users[*]}"
-    echo "DEBUG: Users who should be admins according to the readme: ${admins[*]}"
-    echo "DEBUG: Users who are sudoers: ${sudoers[*]}"
-    echo "DEBUG: Difference between users who exist and users who should exist: ${user_diff[*]}"
-    echo "DEBUG: Difference between sudoers and peolpe who should be sudoers: ${admin_diff[*]}"
+    echo "DEBUG: Users gathered from readme:"
+    echo "${who_should_be[*]}" | tr ' ' '\n'
+    echo "DEBUG: Users gathered from passwd:"
+    echo "${users[*]}" | tr ' ' '\n'
+    echo "DEBUG: Users who should be admins according to the readme:"
+    echo "${admins[*]}" | tr ' ' '\n'
+    echo "DEBUG: Users who are sudoers:"
+    echo "${sudoers[*]}" | tr ' ' '\n'
+    echo "DEBUG: Difference between users who exist and users who should exist:"
+    echo "${user_diff[*]}" | tr ' ' '\n'
+    echo "DEBUG: Difference between sudoers and peolpe who should be sudoers:"
+    echo "${admin_diff[*]}" | tr ' ' '\n'
 fi | tee -a ${REPORT_FILE}
 
 # Users to add
-tmp=($(echo "$user_diff" | grep ">" | awk '{print $2}'))
+tmp=($(echo "${user_diff[*]}" | grep ">" | awk '{print $2}'))
 for user in ${tmp[*]}; do
     useradd -m $user > /dev/null
     echo "Added $user" | tee -a ${REPORT_FILE}
 done
 
 # Users to remove
-tmp=($(echo "$user_diff" | grep "<" | awk '{print $2}'))
+tmp=($(echo "${user_diff[*]}" | grep "<" | awk '{print $2}'))
 for user in ${tmp[*]}; do
     userdel $user > /dev/null
     echo "Removed $user" | tee -a ${REPORT_FILE}
 done
 
 # Users to add
-tmp=($(echo "$admin_diff" | grep ">" | awk '{print $2}'))
+tmp=($(echo "${admin_diff[*]}" | grep ">" | awk '{print $2}'))
 for user in ${tmp[*]}; do
     usermod -aG sudo $user > /dev/null
     echo "Added $user to sudo" | tee -a ${REPORT_FILE}
 done
 
 # Users to remove
-tmp($(echo "$admin_diff" | grep "<" | awk '{print $2}'))
+tmp($(echo "${admin_diff[*]}" | grep "<" | awk '{print $2}'))
 for user in ${tmp[*]}; do
     gpasswd -d $user sudo
     echo "Removed $user from sudo" | tee -a ${REPORT_FILE}
@@ -177,21 +183,26 @@ fi
 # Whoever survives the purge gets a shiny new password
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
 for value in ${users[*]}; do
-      lchage -m 12 -M 90 -W 7 $value
+    chage -m 12 -M 90 -W 7 $value
       
-      if [ "$value" != "$me" ]
-      then
-            mkpasswd -l 16 $value > /dev/null
-      fi
-done
+    if [ "$value" != "$me" ]
+    then
+        LC_ALL=C tr -dc '[:graph:]' </dev/urandom | head -c 16 | read tmp_passwd
+        echo "${value}:${tmp_passwd}"
+    fi
+done | chpasswd
+
+# just scrub the password a little bit
+LC_ALL=C tr -dc '[:graph:]' </dev/urandom | head -c 16 | read tmp_passwd
 
 # Malware protection
 echo "Installing and running malware protection..."
 
 echo "Handling rkhunter..."
-if apt-get install rkhunter -y > /dev/null && rkhunter --propupd > /dev/null && rkhunter -c --skip-keypress > /dev/null
+if apt-get install rkhunter -y > /dev/null && rkhunter -c --skip-keypress > /dev/null
 then
-    echo "Installed and ran rkhunter" | tee -a ${REPORT_FILE}
+    echo "Installed rkhunter" | tee -a ${REPORT_FILE}
+    if ! rkhunter --propupd > /dev/null
 else
     echo "Failed to install and/or run rkhunter" | tee -a ${REPORT_FILE} /dev/stderr > /dev/null
 fi
