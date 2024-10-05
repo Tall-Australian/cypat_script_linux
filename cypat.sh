@@ -275,5 +275,8 @@ apt-get update -y > /dev/null && apt-get upgrade -y > /dev/null
 
 echo "Ran apt-get and apt-get upgrade" | tee -a ${REPORT_FILE}
 
+chown ${me}:${me} ${REPORT_FILE}
+chmod 0640 ${REPORT_FILE}
+
 read -p "About to reboot, press enter to continue..." dummy
 reboot now
