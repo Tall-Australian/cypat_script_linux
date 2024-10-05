@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "$EUID" -ne 0 ]
+then 
+    echo "This script requires root permissions to run properly."
+    exit 1
+fi
+
 me=$(who ran sudo | awk '{print $1}')
 
 if [ -z "$REPORT_FILE" ]
@@ -8,12 +14,6 @@ then
 fi
 
 echo "Run by: $me" > ${REPORT_FILE}
-
-if [ "$EUID" -ne 0 ]
-then 
-    echo "This script requires root permissions to run properly."
-    exit 1
-fi
 
 while getopts "i:u:dr:h" o; do
     case "${o}" in
@@ -128,8 +128,8 @@ who_should_be=($(cat <(awk '/<pre/,/</pre>/' $README | grep -v '[^a-zA-Z0-9]' | 
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
 sudoers=($(getent group sudo | awk -F: '{print $4}' | sed 's/,/\n/g' | sort))
 
-user_diff=($(diff -w <(echo "$who_should_be") <(echo "$users") | grep -v "[0-9]"))
-admin_diff=($(diff -w <(echo "$admins") <(echo "$sudoers") | grep -v "[0-9]")))
+user_diff=($(diff -w <(echo "$users") <(echo "$who_should_be") | grep -v "[0-9]"))
+admin_diff=($(diff -w <(echo "$sudoers") <(echo "$admins") | grep -v "[0-9]")))
 
 if [ ! -z "$CYPAT_DEBUG" ]
 then
@@ -142,25 +142,29 @@ then
 fi | tee -a ${REPORT_FILE}
 
 # Users to add
-for user in ($(echo "$user_diff" | grep ">" | awk '{print $2}')); do
+tmp=($(echo "$user_diff" | grep ">" | awk '{print $2}'))
+for user in ${tmp[*]}; do
     useradd -m $user > /dev/null
     echo "Added $user" | tee -a ${REPORT_FILE}
 done
 
 # Users to remove
-for user in ($(echo "$user_diff" | grep "<" | awk '{print $2}')); do
+tmp=($(echo "$user_diff" | grep "<" | awk '{print $2}'))
+for user in ${tmp[*]}; do
     userdel $user > /dev/null
     echo "Removed $user" | tee -a ${REPORT_FILE}
 done
 
 # Users to add
-for user in ($(echo "$admin_diff" | grep ">" | awk '{print $2}')); do
+tmp=($(echo "$admin_diff" | grep ">" | awk '{print $2}'))
+for user in ${tmp[*]}; do
     usermod -aG sudo $user > /dev/null
     echo "Added $user to sudo" | tee -a ${REPORT_FILE}
 done
 
 # Users to remove
-for user in ($(echo "$admin_diff" | grep "<" | awk '{print $2}')); do
+tmp($(echo "$admin_diff" | grep "<" | awk '{print $2}'))
+for user in ${tmp[*]}; do
     gpasswd -d $user sudo
     echo "Removed $user from sudo" | tee -a ${REPORT_FILE}
 done
@@ -171,7 +175,8 @@ then
 fi
 
 # Whoever survives the purge gets a shiny new password
-for value in $users; do
+users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
+for value in ${users[*]}; do
       lchage -m 12 -M 90 -W 7 $value
       
       if [ "$value" != "$me" ]
@@ -238,7 +243,8 @@ apt-get install auditd -y > /dev/null
 echo "Handling common applications..."
 systemctl stop nginx -y > /dev/null
 
-for program in ($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat")); do
+tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat"))
+for program in ${tmp[*]}; do
     if apt-get purge $program -y
     then
         echo "Removed and purged $program"
@@ -270,4 +276,4 @@ apt-get update -y > /dev/null && apt-get upgrade -y > /dev/null
 echo "Ran apt-get and apt-get upgrade" | tee -a ${REPORT_FILE}
 
 read -p "About to reboot, press enter to continue..." dummy
-reboot
+reboot now
