@@ -124,7 +124,7 @@ echo "    OpenSSH is limited" | tee -a ${REPORT_FILE}
 
 echo "Manging users..."
 admins=($(cat <(awk '/<pre>/,/<b>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "$me") | sort))
-who_should_be=($(cat <(awk '/<pre/,/</pre>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "${me}") | sort))
+who_should_be=($(cat <(awk '/<pre/,/<\/pre>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "${me}") | sort))
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
 sudoers=($(getent group sudo | awk -F: '{print $4}' | tr ',' '\n' | sort))
 
