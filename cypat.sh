@@ -126,10 +126,10 @@ echo "Manging users..."
 admins=($(cat <(awk '/<pre>/,/<b>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "$me") | sort))
 who_should_be=($(cat <(awk '/<pre/,/</pre>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "${me}") | sort))
 users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
-sudoers=($(getent group sudo | awk -F: '{print $4}' | sed 's/,/\n/g' | sort))
+sudoers=($(getent group sudo | awk -F: '{print $4}' | tr ',' '\n' | sort))
 
-user_diff=($(diff -w <(echo "$users") <(echo "$who_should_be") | grep -v "[0-9]"))
-admin_diff=($(diff -w <(echo "$sudoers") <(echo "$admins") | grep -v "[0-9]")))
+user_diff=($(diff -w <(echo "${users[*]}" | tr ' ' '\n') <(echo "${who_should_be[*]}" | tr ' ' '\n') | grep -v "[0-9]"))
+admin_diff=($(diff -w <(echo "${sudoers[*]}" | tr ' ' '\n') <(echo "${admins[*]}" | tr ' ' '\n') | grep -v "[0-9]"))
 
 if [ ! -z "$CYPAT_DEBUG" ]
 then
