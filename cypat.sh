@@ -169,7 +169,7 @@ for user in ${tmp[*]}; do
 done
 
 # Users to remove
-tmp($(echo "${admin_diff[*]}" | grep "<" | awk '{print $2}'))
+tmp=($(echo "${admin_diff[*]}" | grep "<" | awk '{print $2}'))
 for user in ${tmp[*]}; do
     gpasswd -d $user sudo
     echo "Removed $user from sudo" | tee -a ${REPORT_FILE}
