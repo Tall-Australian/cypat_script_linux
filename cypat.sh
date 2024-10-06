@@ -189,19 +189,15 @@ for value in ${users[*]}; do
       
     if [ "$value" != "$me" ]
     then
-        LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16 | read tmp_passwd
-        echo "${value}:${tmp_passwd}"
+        printf "${value}:%s" `LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16`
     fi
 done | chpasswd
-
-# just scrub the password a little bit
-LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16 | read tmp_passwd
 
 # Malware protection
 echo "Installing and running malware protection..."
 
 echo "Handling rkhunter..."
-if apt-get install rkhunter -y > /dev/null 
+if apt-get install rkhunter -y 
 then
     echo "Installed rkhunter" | tee -a ${REPORT_FILE}
     if rkhunter --propupd > /dev/null && rkhunter -c --skip-keypress > /dev/null
@@ -251,27 +247,21 @@ else
 fi
 
 echo "Installing intrusion prevention and detection systems..."
-apt-get install fail2ban -y > /dev/null
+apt-get install fail2ban -y
 # TODO: configure fail2ban
-apt-get install snort -y > /dev/null
+apt-get install snort -y
 # TODO: configure snort
-apt-get install auditd -y > /dev/null
+apt-get install auditd -y
 # TODO: configure auditd
 
 echo "Handling common applications..."
 systemctl stop nginx -y > /dev/null
+systemctl disable nginx -y > /dev/null
 
-tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat"))
+tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat nginx aisleriot"))
 for program in ${tmp[*]}; do
-    if apt-get purge $program -y
-    then
-        echo "Removed and purged $program"
-    else
-        echo "$program was not installed"
-    fi
+    apt-get purge $program -y
 done | tee -a ${REPORT_FILE}
-
-apt autoremove -y > /dev/null
 
 # Write new sshd_config
 echo "Configuring ssh..."
@@ -289,7 +279,8 @@ echo "usb-storage has been added to the kernel blacklist" | tee -a ${REPORT_FILE
 # TODO: mas
 
 echo "Updating and restaring..."
-apt-get update -y > /dev/null && apt-get upgrade -y > /dev/null
+apt-get update -y > /dev/null && apt-get upgrade -y
+apt-get autoremove -y > /dev/null
 
 echo "Ran apt-get and apt-get upgrade" | tee -a ${REPORT_FILE}
 
