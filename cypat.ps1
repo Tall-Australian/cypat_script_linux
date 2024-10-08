@@ -1,6 +1,33 @@
 # Password Policy
 echo "Configuring Password Policy..."
-Set-ADDefaultDomainPasswordPolicy -LockoutDuration 0.0:30:0.0 -LockoutThreshold 3 -MaxPasswordAge 90.0:0:0.0 -MinPasswordAge 4.0:0:0.0 -MinPasswordLength 8 -ReversibleEncryptionEnabled 0 -PasswordHistoryCount 24
+
+# Export and load secpol.msc
+$secpolTempFile = "C:\secpol.cfg"
+secedit /export /cfg /$secpolTempFile
+$secpol = Get-Content $secpolTempFile
+
+# Change policies
+$secpol = $secpol -replace "MinimumPasswordLength = \d+", "MinimumPasswordLength = 12"
+$secpol = $secpol -replace "MaximumPasswordAge = \d+", "MaximumPasswordAge = 90"
+$secpol = $secpol -replace "PasswordComplexity = \d+", "PasswordComplexity = 1"
+$secpol = $secpol -replace "LockoutBadCount = \d+", "LockoutBadCount = 5"
+$secpol = $secpol -replace "PasswordHistorySize = \d+", "PasswordHistorySize = 24"
+$secpol = $secpol -replace "ClearTextPassword = \d+", "ClearTextPassword = 1"
+$secpol = $secpol -replace "AuditSystemEvents = \d+", "AuditSystemEvents = 3"
+$secpol = $secpol -replace "AuditLogonEvents = \d+", "AuditLogonEvents = 3"
+$secpol = $secpol -replace "AuditObjectAccess = \d+", "AuditObjectAccess = 3"
+$secpol = $secpol -replace "AuditPrivilegeUse = \d+", "AuditPrivilegeUse = 3"
+$secpol = $secpol -replace "AuditPolicyChange = \d+", "AuditPolicyChange = 3"
+$secpol = $secpol -replace "AuditAccountManage = \d+", "AuditAccountManage = 3"
+$secpol = $secpol -replace "AuditProcessTracking = \d+", "AuditProcessTracking = 3"
+$secpol = $secpol -replace "AuditDSAccess = \d+", "AuditDSAccess = 3"
+
+# There are some other policies I'd like to change but I kinda don't know how
+
+# Clean up
+$secpol | Set-Content $secpolTempFile
+secedit /configure /db %windir%\security\local.sdb /cfg $secpolTempFile /areas SECURITYPOLICY | Out-Null
+rm $secpolTempFile
 
 # Firewall and Defender
 echo "Enabling Windows Defender..."
@@ -11,25 +38,14 @@ Dism /Online /Enable-Feature /FeatureName:Windows-Defender-Gui
 
 # Handle parameters
 param (
-    [String[]]$Delete,
-    [String[]]$Add,
-    [String[]]$Change,
+    [String[]]$CreateGroup,
     [String[]]$AddToGroup,
+    [String]$Readme,
 )
 
 echo "Manging users..."
-Remove-LocalUser -Name $Delete
-
-foreach ($i in $Add) {
-  $Tuple = $i.Split(":")
-  $Password = ConvertTo-SecureString $Tuple[1]
-  New-LocalUser -Name $Tuple[0] -Password $Password
-}
-
-foreach ($i in $Change) {
-  $Tuple = $i.Split(":")
-  $Password = ConvertTo-SecureString $Tuple[1]
-  Set-LocalUser -Name $Tuple[0] -Password $Password
+foreach ($i in $CreateGroup) {
+    New-LocalGroup -Name $i
 }
 
 foreach ($i in $AddToGroup) {
