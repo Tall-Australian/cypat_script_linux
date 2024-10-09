@@ -40,10 +40,46 @@ Dism /Online /Enable-Feature /FeatureName:Windows-Defender-Gui
 param (
     [String[]]$CreateGroup,
     [String[]]$AddToGroup,
+    [Parameter(Mandatory=$true)]
     [String]$Readme,
 )
 
 echo "Manging users..."
+$ReadmeText = Get-Content -Path $Readme
+$UsersInReadme = New-Object System.Collections.Generic.List[System.Object]
+$AdminsInReadme = New-Object System.Collections.Generic.List[System.Object]
+$idx = 1
+
+# Extract users
+# this is so much easier on linux iswtg
+while($ReadmeText[$idx-1] -notmatch '<pre>') { $idx++ }
+while($ReadmeText[$idx] -notmatch '<b>') {
+    if($ReadmeText[$idx] -match '^[a-z]+') {
+        $AdminsInReadme.Add($ReadmeText[$idx].split(' ')[0])
+    }
+    $idx++
+}
+$idx++
+while($ReadmeText[$idx] -notmatch '</pre>') {
+    if($ReadmeText[$idx] -match '^[a-z]+') {
+        $AdminsInReadme.Add($ReadmeText[$idx].split(' ')[0])
+    }
+    $idx++
+}
+
+$UserInReadme = $UserInReadme | Sort-Object
+$AdminInReadme = $AdminInReadme | Sort-Object
+#i cannot emphasize how much easier this is on linux like
+# user=($(getent passwd | awk -F: "($3>=1000&&$3<60000){print $1}"))
+$Users_ = Get-LocalUser | ForEach-Object {$_.Name} | select-string "^[a-z]+" -CaseSensitive | where {$_.trim() -ne ""} | Sort-Object
+# i strongly prefer the classic bash line of:
+# sudoers=($(getent group sudo | awk -F: "{print $4}" | tr ',' '\n' ))
+$Admins_ = Get-LocalGroupMember -Group "Administrators" | ForEach-Object {$_.Name.split("\")[1]} | select-string "^[a-z]+" -CaseSensitive | Sort-Object
+
+foreach ($u in $Users_) {
+    
+}
+
 foreach ($i in $CreateGroup) {
     New-LocalGroup -Name $i
 }
