@@ -86,7 +86,12 @@ echo "password required pam_pwquality.so" > /etc/pam.d/common-password
 echo "password [success=1 default=ignore] pam_unix.so yescrypt remember=24 use_authok shadow" >> /etc/pam.d/common-password
 echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
 echo "password required pam_permit.so" >> /etc/pam.d/common-password
-echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
+
+# If gnome is running, use the keyring.
+if ps aux | grep -v "grep" | grep "gnome" > /dev/null then
+    echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
+fi
+
 echo "difok=8" > /etc/security/pwquality.conf
 echo "minlen=12" >> /etc/security/pwquality.conf
 echo "minclass=4" >> /etc/security/pwquality.conf
