@@ -88,7 +88,7 @@ echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
 echo "password required pam_permit.so" >> /etc/pam.d/common-password
 
 # If gnome is running, use the keyring.
-if ps aux | grep -v "grep" | grep "gnome" > /dev/null then
+if (ps aux | grep -v "grep" | grep "gnome" > /dev/null) then
     echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
 fi
 
@@ -263,18 +263,18 @@ echo "Handling common applications..."
 systemctl stop nginx -y > /dev/null
 systemctl disable nginx -y > /dev/null
 
-tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat nginx aisleriot"))
+tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat nginx aisleriot deluge"))
 for program in ${tmp[*]}; do
     apt-get purge $program -y
 done | tee -a ${REPORT_FILE}
 
 # Write new sshd_config
 echo "Configuring ssh..."
-wget -o /etc/ssh/sshd_config https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config > /dev/null
+wget -P -q /etc/ssh/ https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config" | tee -a ${REPORT_FILE}
 
 echo "Configuring the kernel..."
-wget -o /etc/sysctl.conf https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf > /dev/null
+wget -P -q /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | tee -a ${REPORT_FILE}
 
 echo "Disabling USBs..."
