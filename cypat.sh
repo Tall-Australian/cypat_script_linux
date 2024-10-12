@@ -190,24 +190,28 @@ fi | tee -a ${REPORT_FILE}
 while read user 
 do
     useradd -m $user
+    echo "Added user: $user" | tee -a ${REPORT_FILE}
 done < <(comm -23 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to delete.
 while read user 
 do
     userdel -m $user
+    echo "Deleted user: $user" | tee -a ${REPORT_FILE}
 done < <(comm -13 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to add.
 while read user 
 do
     usermod -aG sudo $user
+    echo "Added $user to sudo" | tee -a ${REPORT_FILE}
 done < <(comm -23 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 # Users to delete.
 while read user 
 do
     gpasswd -d $user sudo
+    echo "Removed $user to sudo" | tee -a ${REPORT_FILE}
 done < <(comm -13 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 if ! type mkpasswd &>/dev/null
