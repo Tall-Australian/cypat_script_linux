@@ -6,14 +6,32 @@ then
     exit 1
 fi
 
+source /etc/os-release
+
 me=$(who ran sudo | awk '{print $1}')
+invoc_date=$(date "+%Y-%m-%d")
+
+if [ -z "$STDERR" ] then
+    STDERR=/dev/stderr
+fi
 
 if [ -z "$REPORT_FILE" ]
 then
-    REPORT_FILE="/home/${me}/report"
+    REPORT_FILE="/var/log/cypat-${ID}-${invoc_time}.log"
+fi
+
+if [ -z "$ERR_REPORT_FILE" ]
+then
+    ERR_REPORT_FILE="/var/log/cypat-${ID}-${invoc_time}.err.log"
+fi
+
+# Redirects all errors to $ERR_REPORT_FILE, unless told explicitly not to.
+if [ -n "$NO_REDIRECT_ERR" ] then
+    exec 2> >(tee $ERR_REPORT_FILE > $STDERR)
 fi
 
 echo "Run by: $me" > ${REPORT_FILE}
+echo "Run on: $PRETTY_NAME" > ${REPORT_FILE}
 
 while getopts "i:u:dr:h" o; do
     case "${o}" in
@@ -61,25 +79,35 @@ fi
 
 # Create backups
 echo "Creating backups..."
-cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null
-echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | tee -a ${REPORT_FILE}
-cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null
-echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | tee -a ${REPORT_FILE}
-cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null
-echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | tee -a ${REPORT_FILE}
-cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null
-echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | tee -a ${REPORT_FILE}
-cp -a /etc/login.defs /etc/login.defs.bak > /dev/null
-echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | tee -a ${REPORT_FILE}
-cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null
-echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | tee -a ${REPORT_FILE}
+if cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null then
+    echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | tee -a ${REPORT_FILE}
+fi
+
+if cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null then
+    echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | tee -a ${REPORT_FILE}
+fi
+
+if cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null then
+    echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | tee -a ${REPORT_FILE}
+fi
+
+if cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null then
+    echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | tee -a ${REPORT_FILE}
+fi
+
+if cp -a /etc/login.defs /etc/login.defs.bak > /dev/null then
+    echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | tee -a ${REPORT_FILE}
+fi
+
+if cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null then
+    echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | tee -a ${REPORT_FILE}
+fi
 
 # Config PAM
 echo "Configuring PAM..."
 
 echo "Configuring common-password..."
 touch /etc/security/opasswd
-source /etc/os-release
 
 apt-get install libpam-pwquality -y > /dev/null
 echo "password required pam_pwquality.so" > /etc/pam.d/common-password
@@ -88,7 +116,7 @@ echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
 echo "password required pam_permit.so" >> /etc/pam.d/common-password
 
 # If gnome is running, use the keyring.
-if (ps aux | grep -v "grep" | grep "gnome" > /dev/null) then
+if (set -eou pipefail; ps aux | grep -v "grep" | grep "gnome" > /dev/null) then
     echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
 fi
 
@@ -110,7 +138,10 @@ echo "    Minimum of 12 days before changing password" | tee -a ${REPORT_FILE}
 echo "    Maximum password age of 90 days" | tee -a ${REPORT_FILE}
 
 echo "Configuring common-auth..."
-# TODO: rest of pam
+
+# Unset nullok
+# this shouldn't be necessary due to the new password policy, but cypat still checks for this
+sed 's/nullok//g' -i /etc/pam.d/common-auth
 
 rm -f /etc/ftpusers
 
@@ -129,13 +160,10 @@ echo "    HTTPS is allowed" | tee -a ${REPORT_FILE}
 echo "    OpenSSH is limited" | tee -a ${REPORT_FILE}
 
 echo "Manging users..."
-admins=($(cat <(awk '/<pre>/,/<b>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "$me") | sort))
-who_should_be=($(cat <(awk '/<pre/,/<\/pre>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "${me}") | sort))
-users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}' | sort))
-sudoers=($(getent group sudo | awk -F: '{print $4}' | tr ',' '\n' | sort))
-
-user_diff=($(diff -w <(echo "${users[*]}" | tr ' ' '\n') <(echo "${who_should_be[*]}" | tr ' ' '\n') | grep -v "[0-9]"))
-admin_diff=($(diff -w <(echo "${sudoers[*]}" | tr ' ' '\n') <(echo "${admins[*]}" | tr ' ' '\n') | grep -v "[0-9]"))
+admins=($(cat <(awk '/<pre>/,/<b>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "$me")))
+who_should_be=($(cat <(awk '/<pre/,/<\/pre>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "${me}")))
+users=($(getent passwd | awk -F: '($3>=1000)&&($3<60000){print $1}'))
+sudoers=($(getent group sudo | awk -F: '{print $4}' | tr ',' '\n'))
 
 if [ ! -z "$CYPAT_DEBUG" ]
 then
@@ -146,41 +174,28 @@ then
     echo "DEBUG: Users who should be admins according to the readme:"
     printf '    %s\n' "${admins[@]}"
     echo "DEBUG: Users who are sudoers:"
-    printf '    %s\n' "${sudoers[@]}"
-    echo "DEBUG: Difference between users who exist and users who should exist:"
-    printf '    %s\n' "${user_diff[@]}"
-    echo "DEBUG: Difference between sudoers and peolpe who should be sudoers:"
-    printf '    %s\n' "${admin_diff[@]}"
     read -p "Press enter to continue" dummy
 fi | tee -a ${REPORT_FILE}
 
-# Users to add
-tmp=($(echo "${user_diff[*]}" | grep ">" | awk '{print $2}'))
-for user in ${tmp[*]}; do
-    useradd -m $user > /dev/null
-    echo "Added $user" | tee -a ${REPORT_FILE}
-done
+# Users to add.
+while read user do
+    useradd -m $user
+done < <(comm -23 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
-# Users to remove
-tmp=($(echo "${user_diff[*]}" | grep "<" | awk '{print $2}'))
-for user in ${tmp[*]}; do
-    userdel $user > /dev/null
-    echo "Removed $user" | tee -a ${REPORT_FILE}
-done
+# Users to delete.
+while read user do
+    userdel -m $user
+done < <(comm -13 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
-# Users to add
-tmp=($(echo "${admin_diff[*]}" | grep ">" | awk '{print $2}'))
-for user in ${tmp[*]}; do
-    usermod -aG sudo $user > /dev/null
-    echo "Added $user to sudo" | tee -a ${REPORT_FILE}
-done
+# Users to add.
+while read user do
+    usermod -aG sudo $user
+done < <(comm -23 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
-# Users to remove
-tmp=($(echo "${admin_diff[*]}" | grep "<" | awk '{print $2}'))
-for user in ${tmp[*]}; do
+# Users to delete.
+while read user do
     gpasswd -d $user sudo
-    echo "Removed $user from sudo" | tee -a ${REPORT_FILE}
-done
+done < <(comm -13 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 if ! type mkpasswd &>/dev/null
 then
@@ -194,7 +209,7 @@ for value in ${users[*]}; do
       
     if [ "$value" != "$me" ]
     then
-        printf "${value}:%s" `LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16`
+        printf "${value}:%s" $(LC_ALL=C tr -dc '[:graph:]' < /dev/urandom | head -c 16)
     fi
 done | chpasswd
 
@@ -278,8 +293,23 @@ wget -P -q /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.c
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | tee -a ${REPORT_FILE}
 
 echo "Disabling USBs..."
-echo "blacklist usb-storage" >> /etc/modprobe.d/blacklist.conf
+printf "blacklist usb-storage\ninstall usb-storage /bin/true\n" > /etc/modprobe.d/cypat.blacklist.conf
 echo "usb-storage has been added to the kernel blacklist" | tee -a ${REPORT_FILE}
+
+echo "Removing/Quarantining bad files..."
+for dir in /home /var /media /opt /run /opt
+do
+    while read file do 
+        echo "Found bad file at $file"
+        if mv $file "/root/quarantine/cypat${file}" > /dev/null then
+            chown root:root "/root/quarantine/cypat${file}" > /dev/null
+            chmod 0400 "/root/quarantine/cypat${file}" > /dev/null
+            echo "Quarantined $file to /root/quarantine/cypat${file}"
+        else
+            echo "Failed to quarantine $file" | tee -a /dev/stderr
+        fi
+    done < <(find $dir -name "*.mp3" -o -name "*.ogg" -o -name "*.pcap" -o -name "*.pcapng" -o -name "*.mp4")
+done | tee -a ${REPORT_FILE}
 
 # TODO: mas
 
@@ -291,6 +321,9 @@ echo "Ran apt-get and apt-get upgrade" | tee -a ${REPORT_FILE}
 
 chown ${me}:${me} ${REPORT_FILE}
 chmod 0640 ${REPORT_FILE}
+
+chown ${me}:${me} ${ERR_REPORT_FILE}
+chmod 0640 ${ERR_REPORT_FILE}
 
 read -p "About to reboot, press enter to continue..." dummy
 reboot now
