@@ -11,8 +11,9 @@ source /etc/os-release
 me=$(who ran sudo | awk '{print $1}')
 invoc_date=$(date "+%Y-%m-%d")
 
-if [ -z "$STDERR" ] then
-    STDERR=/dev/stderr
+if [ -z "$STDERR" ]
+then
+    STDERR="/dev/stderr"
 fi
 
 if [ -z "$REPORT_FILE" ]
@@ -26,7 +27,8 @@ then
 fi
 
 # Redirects all errors to $ERR_REPORT_FILE, unless told explicitly not to.
-if [ -n "$NO_REDIRECT_ERR" ] then
+if [ -n "$NO_REDIRECT_ERR" ] 
+then
     exec 2> >(tee $ERR_REPORT_FILE > $STDERR)
 fi
 
@@ -79,27 +81,33 @@ fi
 
 # Create backups
 echo "Creating backups..."
-if cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null then
+if cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null 
+then
     echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | tee -a ${REPORT_FILE}
 fi
 
-if cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null then
+if cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null 
+then
     echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | tee -a ${REPORT_FILE}
 fi
 
-if cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null then
+if cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null 
+then
     echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | tee -a ${REPORT_FILE}
 fi
 
-if cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null then
+if cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null 
+then
     echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | tee -a ${REPORT_FILE}
 fi
 
-if cp -a /etc/login.defs /etc/login.defs.bak > /dev/null then
+if cp -a /etc/login.defs /etc/login.defs.bak > /dev/null 
+then
     echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | tee -a ${REPORT_FILE}
 fi
 
-if cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null then
+if cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null 
+then
     echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | tee -a ${REPORT_FILE}
 fi
 
@@ -116,7 +124,8 @@ echo "password requisite pam_deny.so" >> /etc/pam.d/common-password
 echo "password required pam_permit.so" >> /etc/pam.d/common-password
 
 # If gnome is running, use the keyring.
-if (set -eou pipefail; ps aux | grep -v "grep" | grep "gnome" > /dev/null) then
+if (set -eou pipefail; ps aux | grep -v "grep" | grep "gnome" > /dev/null) 
+then
     echo "password optional pam_gnome_keyring.so" >> /etc/pam.d/common-password
 fi
 
@@ -178,22 +187,26 @@ then
 fi | tee -a ${REPORT_FILE}
 
 # Users to add.
-while read user do
+while read user 
+do
     useradd -m $user
 done < <(comm -23 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to delete.
-while read user do
+while read user 
+do
     userdel -m $user
 done < <(comm -13 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to add.
-while read user do
+while read user 
+do
     usermod -aG sudo $user
 done < <(comm -23 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 # Users to delete.
-while read user do
+while read user 
+do
     gpasswd -d $user sudo
 done < <(comm -13 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
@@ -299,9 +312,11 @@ echo "usb-storage has been added to the kernel blacklist" | tee -a ${REPORT_FILE
 echo "Removing/Quarantining bad files..."
 for dir in /home /var /media /opt /run /opt
 do
-    while read file do 
+    while read file 
+    do 
         echo "Found bad file at $file"
-        if mv $file "/root/quarantine/cypat${file}" > /dev/null then
+        if mv $file "/root/quarantine/cypat${file}" > /dev/null 
+        then
             chown root:root "/root/quarantine/cypat${file}" > /dev/null
             chmod 0400 "/root/quarantine/cypat${file}" > /dev/null
             echo "Quarantined $file to /root/quarantine/cypat${file}"
