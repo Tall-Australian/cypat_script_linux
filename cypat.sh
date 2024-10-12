@@ -302,11 +302,11 @@ done | tee -a ${REPORT_FILE}
 
 # Write new sshd_config
 echo "Configuring ssh..."
-wget -P -q /etc/ssh/ https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
+wget -q -P /etc/ssh/ https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config" | tee -a ${REPORT_FILE}
 
 echo "Configuring the kernel..."
-wget -P -q /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
+wget -q -P /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | tee -a ${REPORT_FILE}
 
 echo "Disabling USBs..."
