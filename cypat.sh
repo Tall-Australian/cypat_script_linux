@@ -1,5 +1,13 @@
 #!/bin/bash
 
+invoc_date=$(date "+%Y-%m-%d")
+
+function log {
+    while read line; do
+        printf "%s: %s\n" "$(date -Isec)" "$line"
+    done | tee -a "$1"
+}
+
 if [ "$EUID" -ne 0 ]
 then 
     echo "This script requires root permissions to run properly. Failing." >&2
@@ -9,7 +17,6 @@ fi
 source /etc/os-release
 
 me=$(who ran sudo | awk '{print $1}')
-invoc_date=$(date "+%Y-%m-%d")
 
 if [ -z "$STDERR" ]
 then
@@ -29,11 +36,18 @@ fi
 # Redirects all errors to $ERR_REPORT_FILE, unless told explicitly not to.
 if [ -n "$NO_REDIRECT_ERR" ] 
 then
-    exec 2> >(tee $ERR_REPORT_FILE > $STDERR)
+    exec 2> >(log "$ERR_REPORT_FILE" > "$STDERR")
 fi
 
-echo "Run by: $me" > ${REPORT_FILE}
-echo "Run on: $PRETTY_NAME" > ${REPORT_FILE}
+echo "Run by: $me" | log "${REPORT_FILE}"
+echo "Run on: $PRETTY_NAME" | log "${REPORT_FILE}"
+
+if apt-get update -y > /dev/null
+then
+    echo "Updated apt sources" | log "${REPORT_FILE}"
+else
+    echo "Failed to update apt sources" >&2
+fi
 
 while getopts "i:u:dr:h" o; do
     case "${o}" in
@@ -42,9 +56,9 @@ while getopts "i:u:dr:h" o; do
             
             if apt-get install ${i} -y > /dev/null
             then
-                echo "Installed package ${i}" | tee -a ${REPORT_FILE}
+                echo "Installed package ${i}" | log "${REPORT_FILE}"
             else
-                echo "Failed to install package ${i}" | tee -a ${REPORT_FILE} >&2
+                echo "Failed to install package ${i}" | log "${REPORT_FILE}" >&2
             fi
             ;;
         u)
@@ -52,18 +66,18 @@ while getopts "i:u:dr:h" o; do
             
             if apt-get remove ${u} -y > /dev/null
             then
-                echo "Removed package ${i}" | tee -a ${REPORT_FILE}
+                echo "Removed package ${i}" | log "${REPORT_FILE}"
             else
-                echo "Failed to remove package ${i}" | tee -a ${REPORT_FILE} >&2
+                echo "Failed to remove package ${i}" | log "${REPORT_FILE}" >&2
             fi
             ;;
         d)
             CYPAT_DEBUG=1
-            echo "Debug mode enabled" | tee -a ${REPORT_FILE}
+            echo "Debug mode enabled" | log "${REPORT_FILE}"
             ;;
         r)
             README=${OPTARG}
-            echo "Readme file specified as ${OPTARG}" | tee -a ${REPORT_FILE}
+            echo "Readme file specified as ${OPTARG}" | log "${REPORT_FILE}"
             ;;
         h)
             echo "Usage: ${0} -r <readme> [-i <package>] [-u <package>] [-h] [-d]"
@@ -83,32 +97,32 @@ fi
 echo "Creating backups..."
 if cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null 
 then
-    echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | log "${REPORT_FILE}"
 fi
 
 if cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null 
 then
-    echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | log "${REPORT_FILE}"
 fi
 
 if cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null 
 then
-    echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | log "${REPORT_FILE}"
 fi
 
 if cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null 
 then
-    echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | log "${REPORT_FILE}"
 fi
 
 if cp -a /etc/login.defs /etc/login.defs.bak > /dev/null 
 then
-    echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | log "${REPORT_FILE}"
 fi
 
 if cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null 
 then
-    echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | tee -a ${REPORT_FILE}
+    echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | log "${REPORT_FILE}"
 fi
 
 # Config PAM
@@ -136,15 +150,15 @@ echo "retry=5" >> /etc/security/pwquality.conf
 
 sed -i "s/^PASS_MIN_DAYS/PASS_MIN_DAYS 12; s/^PASS_MAX_DAYS/PASS_MAX_DAYS 90" /etc/login.defs
 
-echo "Configured password policy with the following settings:" | tee -a ${REPORT_FILE}
-echo "    yescrypt as the encryption algorithm" | tee -a ${REPORT_FILE}
-echo "    5 Previous passwords are remembered" | tee -a ${REPORT_FILE}
-echo "    At least 8 characters of difference between new and old passwords" | tee -a ${REPORT_FILE}
-echo "    Minimum password length of 12 characters" | tee -a ${REPORT_FILE}
-echo "    Password complexity of at least one character of each class required" | tee -a  ${REPORT_FILE}
-echo "    Maximum of 5 retries" | tee -a ${REPORT_FILE}
-echo "    Minimum of 12 days before changing password" | tee -a ${REPORT_FILE}
-echo "    Maximum password age of 90 days" | tee -a ${REPORT_FILE}
+echo "Configured password policy with the following settings:" | log "${REPORT_FILE}"
+echo "    yescrypt as the encryption algorithm" | log "${REPORT_FILE}"
+echo "    5 Previous passwords are remembered" | log "${REPORT_FILE}"
+echo "    At least 8 characters of difference between new and old passwords" | log "${REPORT_FILE}"
+echo "    Minimum password length of 12 characters" | log "${REPORT_FILE}"
+echo "    Password complexity of at least one character of each class required" | log "${REPORT_FILE}"
+echo "    Maximum of 5 retries" | log "${REPORT_FILE}"
+echo "    Minimum of 12 days before changing password" | log "${REPORT_FILE}"
+echo "    Maximum password age of 90 days" | log "${REPORT_FILE}"
 
 echo "Configuring common-auth..."
 
@@ -163,10 +177,10 @@ ufw allow https > /dev/null
 ufw limit OpenSSH > /dev/null
 ufw enable > /dev/null
 
-echo "ufw is configured with the following rules:" | tee -a ${REPORT_FILE}
-echo "    Default action is denial" | tee -a ${REPORT_FILE}
-echo "    HTTPS is allowed" | tee -a ${REPORT_FILE}
-echo "    OpenSSH is limited" | tee -a ${REPORT_FILE}
+echo "ufw is configured with the following rules:" | log "${REPORT_FILE}"
+echo "    Default action is denial" | log "${REPORT_FILE}"
+echo "    HTTPS is allowed" | log "${REPORT_FILE}"
+echo "    OpenSSH is limited" | log "${REPORT_FILE}"
 
 echo "Manging users..."
 admins=($(cat <(awk '/<pre>/,/<b>/' $README | grep -v '[^a-zA-Z0-9]' | grep -v '^$') <(echo "$me")))
@@ -184,34 +198,34 @@ then
     printf '    %s\n' "${admins[@]}"
     echo "DEBUG: Users who are sudoers:"
     read -p "Press enter to continue" dummy
-fi | tee -a ${REPORT_FILE}
+fi | log "${REPORT_FILE}"
 
 # Users to add.
 while read user 
 do
     useradd -m $user
-    echo "Added user: $user" | tee -a ${REPORT_FILE}
+    echo "Added user: $user" | log "${REPORT_FILE}"
 done < <(comm -23 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to delete.
 while read user 
 do
     userdel -m $user
-    echo "Deleted user: $user" | tee -a ${REPORT_FILE}
+    echo "Deleted user: $user" | log "${REPORT_FILE}"
 done < <(comm -13 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
 # Users to add.
 while read user 
 do
     usermod -aG sudo $user
-    echo "Added $user to sudo" | tee -a ${REPORT_FILE}
+    echo "Added $user to sudo" | log "${REPORT_FILE}"
 done < <(comm -23 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 # Users to delete.
 while read user 
 do
     gpasswd -d $user sudo
-    echo "Removed $user to sudo" | tee -a ${REPORT_FILE}
+    echo "Removed $user to sudo" | log "${REPORT_FILE}"
 done < <(comm -13 <(printf "%s\n" "${admins[@]}" | sort) <(printf "%s\n" "${sudoers[@]}" | sort))
 
 if ! type mkpasswd &>/dev/null
@@ -236,15 +250,15 @@ echo "Installing and running malware protection..."
 echo "Handling rkhunter..."
 if apt-get install rkhunter -y 
 then
-    echo "Installed rkhunter" | tee -a ${REPORT_FILE}
+    echo "Installed rkhunter" | log "${REPORT_FILE}"
     if rkhunter --propupd > /dev/null && rkhunter -c --skip-keypress > /dev/null
     then
-        echo "Successfuly ran rkhunter" | tee -a ${REPORT_FILE}
+        echo "Successfuly ran rkhunter" | log "${REPORT_FILE}"
     else
-        echo "rkhunter failed" | tee -a ${REPORT_FILE} >&2
+        echo "rkhunter failed" | log "${REPORT_FILE}" >&2
     fi
 else
-    echo "Failed to install rkhunter" | tee -a ${REPORT_FILE} >&2
+    echo "Failed to install rkhunter" | log "${REPORT_FILE}" >&2
 fi
 
 echo "Configuring and running clamav..."
@@ -266,21 +280,21 @@ then
     echo "0 0 * * * root /usr/bin/clamdscan -m --fdpass --move=/root/quarantine /" >> /etc/cron.d/clamdscan
     systemctl restart clamav-daemon > /dev/null
 
-    echo "Installed and configured clamav with the following settings:" | tee -a ${REPORT_FILE}
-    echo "    Log file is at /var/log/clamav/clamdscan.log" | tee -a ${REPORT_FILE}
-    echo "    Verbose logging enabled" | tee -a ${REPORT_FILE}
-    echo "    Exclude /proc /sys /run /dev /snap /var/lib/lxcfs/cgroup /root/quarantine" | tee -a ${REPORT_FILE}
-    echo "    Malware dected is quarantined in /root/quarantine" | tee -a ${REPORT_FILE}
-    echo "    clamdscan is run every day at midnight" | tee -a ${REPORT_FILE}
+    echo "Installed and configured clamav with the following settings:" | log "${REPORT_FILE}"
+    echo "    Log file is at /var/log/clamav/clamdscan.log" | log "${REPORT_FILE}"
+    echo "    Verbose logging enabled" | log "${REPORT_FILE}"
+    echo "    Exclude /proc /sys /run /dev /snap /var/lib/lxcfs/cgroup /root/quarantine" | log "${REPORT_FILE}"
+    echo "    Malware dected is quarantined in /root/quarantine" | log "${REPORT_FILE}"
+    echo "    clamdscan is run every day at midnight" | log "${REPORT_FILE}"
 
     if clamdscan -m --remove --fdpass --move=/root/quarantine / > /dev/null
     then
-        echo "Ran clamdscan" | tee -a ${REPORT_FILE}
+        echo "Ran clamdscan" | log "${REPORT_FILE}"
     else
-        echo "Failed to run clamdscan" | tee -a ${REPORT_FILE} >&2
+        echo "Failed to run clamdscan" >&2
     fi
 else
-    echo "Failed to install clamav" | tee -a ${REPORT_FILE} >&2
+    echo "Failed to install clamav" >&2
 fi
 
 echo "Installing intrusion prevention and detection systems..."
@@ -298,20 +312,20 @@ systemctl disable nginx -y > /dev/null
 tmp=($(echo "wireshark dwarf-fortress tor nmap ophcrack telnet telnetd crack hashcat hashcat-legacy john rainbowcrack npcap netcat cryptcat nginx aisleriot deluge"))
 for program in ${tmp[*]}; do
     apt-get purge $program -y
-done | tee -a ${REPORT_FILE}
+done | log "${REPORT_FILE}"
 
 # Write new sshd_config
 echo "Configuring ssh..."
 wget -q -P /etc/ssh/ https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
-echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config" | tee -a ${REPORT_FILE}
+echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config" | log "${REPORT_FILE}"
 
 echo "Configuring the kernel..."
 wget -q -P /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
-echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | tee -a ${REPORT_FILE}
+echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | log "${REPORT_FILE}"
 
 echo "Disabling USBs..."
 printf "blacklist usb-storage\ninstall usb-storage /bin/true\n" > /etc/modprobe.d/cypat.blacklist.conf
-echo "usb-storage has been added to the kernel blacklist" | tee -a ${REPORT_FILE}
+echo "usb-storage has been added to the kernel blacklist" | log "${REPORT_FILE}"
 
 echo "Removing/Quarantining bad files..."
 for dir in /home /var /media /opt /run /opt
@@ -328,7 +342,7 @@ do
             echo "Failed to quarantine $file" | tee -a /dev/stderr
         fi
     done < <(find $dir -name "*.mp3" -o -name "*.ogg" -o -name "*.pcap" -o -name "*.pcapng" -o -name "*.mp4")
-done | tee -a ${REPORT_FILE}
+done | log "${REPORT_FILE}"
 
 # TODO: mas
 
@@ -336,13 +350,7 @@ echo "Updating and restaring..."
 apt-get update -y > /dev/null && apt-get upgrade -y
 apt-get autoremove -y > /dev/null
 
-echo "Ran apt-get and apt-get upgrade" | tee -a ${REPORT_FILE}
-
-chown ${me}:${me} ${REPORT_FILE}
-chmod 0640 ${REPORT_FILE}
-
-chown ${me}:${me} ${ERR_REPORT_FILE}
-chmod 0640 ${ERR_REPORT_FILE}
+echo "Ran apt-get and apt-get upgrade" | log "${REPORT_FILE}"
 
 read -p "About to reboot, press enter to continue..." dummy
 reboot now
