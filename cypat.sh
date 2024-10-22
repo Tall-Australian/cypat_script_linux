@@ -49,7 +49,7 @@ else
     echo "Failed to update apt sources" >&2
 fi
 
-while getopts "i:u:dr:h" o; do
+while getopts "i:u:dDhr:R:E:" o; do
     case "${o}" in
         i)
             i=${OPTARG}
@@ -75,9 +75,24 @@ while getopts "i:u:dr:h" o; do
             CYPAT_DEBUG=1
             echo "Debug mode enabled" | log "${REPORT_FILE}"
             ;;
+        D)
+            USE_USERDEL=1
+            echo "User deletion mode enabled" | log "${REPORT_FILE}"
         r)
             README=${OPTARG}
             echo "Readme file specified as ${OPTARG}" | log "${REPORT_FILE}"
+            ;;
+        R)
+            olog=${REPORT_FILE}
+            REPORT_FILE=${OPTARG}
+            mv $olog $REPORT_FILE > /dev/null
+            echo "Report file specified as ${OPTARG}" | log "$OPTARG"
+            ;;
+        E)
+            olog=${ERR_REPORT_FILE}
+            ERR_REPORT_FILE=${OPTARG}
+            mv $olog $ERR_REPORT_FILE > /dev/null
+            echo "Error log file specified as ${OPTARG}" | log "$OPTARG"
             ;;
         h)
             echo "Usage: ${0} -r <readme> [-i <package>] [-u <package>] [-h] [-d]"
