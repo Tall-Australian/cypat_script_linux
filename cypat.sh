@@ -95,32 +95,32 @@ fi
 
 # Create backups
 echo "Creating backups..."
-if cp -a /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null 
+if mv -f /etc/pam.d/common-password /etc/pam.d/common-password.bak > /dev/null 
 then
     echo "Created back up of /etc/pam.d/common-password at /etc/pam.d/common-password.bak" | log "${REPORT_FILE}"
 fi
 
-if cp -a /etc/ftpusers /etc/ftpusers.bak > /dev/null 
+if mv -f /etc/ftpusers /etc/ftpusers.bak > /dev/null 
 then
     echo "Created back up of /etc/ftpusers at /etc/ftpusers.bak" | log "${REPORT_FILE}"
 fi
 
-if cp -a /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null 
+if mv -f /etc/ssh/sshd_config /etc/ssh/sshd_config.bak > /dev/null 
 then
     echo "Created back up of /etc/ssh/sshd_config at /etc/ssh/sshd_config.bak" | log "${REPORT_FILE}"
 fi
 
-if cp -a /etc/selinux/config /etc/selinux/config.bak > /dev/null 
+if mv -f /etc/selinux/config /etc/selinux/config.bak > /dev/null 
 then
     echo "Created back up of /etc/selinux/config at /etc/selinux/config.bak" | log "${REPORT_FILE}"
 fi
 
-if cp -a /etc/login.defs /etc/login.defs.bak > /dev/null 
+if mv -f /etc/login.defs /etc/login.defs.bak > /dev/null 
 then
     echo "Created back up of /etc/login.defs at /etc/login.defs.bak" | log "${REPORT_FILE}"
 fi
 
-if cp -a /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null 
+if mv -f /etc/sysctl.conf /etc/sysctl.conf.bak > /dev/null 
 then
     echo "Created back up of /etc/sysctl.conf at /etc/sysctl.conf.bak" | log "${REPORT_FILE}"
 fi
@@ -210,7 +210,16 @@ done < <(comm -23 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" 
 # Users to delete.
 while read user 
 do
-    userdel -m $user
+    # Userdel or passwd -l + chage -E 0 + usermod -s /sbin/nologin
+    if [ -z "$USE_USERDEL" ]
+    then
+        passwd -l $user
+        chage -E 0 $user
+        usermod -s /sbin/nologin $user
+    else
+        userdel $user
+    fi
+    
     echo "Deleted user: $user" | log "${REPORT_FILE}"
 done < <(comm -13 <(printf "%s\n" "${who_should_be[@]}" | sort) <(printf "%s\n" "${users[@]}" | sort))
 
@@ -266,10 +275,10 @@ if apt-get install clamav clamav-daemon -y
 then
     mkdir /var/log/clamav
     mkdir /root/quarantine
-    chmod -R 0200 /root/quarantine
+    chmod -R 0200 /root/quarantine # Read only
     touch /var/log/clamav/clamdscan.log
 
-    freshclam > /dev/null
+    freshclam > /dev/null # I have genuinely never seen freshclam work.
 
     systemctl start clamav-freshclam > /dev/null
     systemctl enable clamav-daemon > /dev/null
@@ -316,11 +325,11 @@ done | log "${REPORT_FILE}"
 
 # Write new sshd_config
 echo "Configuring ssh..."
-wget -q -P /etc/ssh/ https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
+wget -O /etc/ssh/sshd_config https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sshd_config/master/sshd_config" | log "${REPORT_FILE}"
 
 echo "Configuring the kernel..."
-wget -q -P /etc/ https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
+wget -O /etc/sysctl.conf https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf
 echo "Fetched a secure sshd_config from https://raw.githubusercontent.com/k4yt3x/sysctl/master/sysctl.conf" | log "${REPORT_FILE}"
 
 echo "Disabling USBs..."
