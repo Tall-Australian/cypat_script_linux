@@ -1,6 +1,10 @@
 #!/bin/bash
 
 invoc_date=$(date "+%Y-%m-%d")
+# Assign invoc_time to current time
+invoc_time=$(date "+%T")
+# Replace : with _ to avoid naming errors
+invoc_time=${invoc_time//:/_}
 
 function log {
     while read line; do
@@ -78,6 +82,7 @@ while getopts "i:u:dDhr:R:E:" o; do
         D)
             USE_USERDEL=1
             echo "User deletion mode enabled" | log "${REPORT_FILE}"
+            ;;
         r)
             README=${OPTARG}
             echo "Readme file specified as ${OPTARG}" | log "${REPORT_FILE}"
