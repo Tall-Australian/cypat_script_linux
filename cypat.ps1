@@ -1,3 +1,6 @@
+# Include below line (With comment) to require adminsitrator priveleges
+#Requires -RunAsAdministrator
+
 # Password Policy
 echo "Configuring Password Policy..."
 
@@ -13,16 +16,43 @@ $secpol = $secpol -replace "PasswordComplexity = \d+", "PasswordComplexity = 1"
 $secpol = $secpol -replace "LockoutBadCount = \d+", "LockoutBadCount = 5"
 $secpol = $secpol -replace "PasswordHistorySize = \d+", "PasswordHistorySize = 24"
 $secpol = $secpol -replace "ClearTextPassword = \d+", "ClearTextPassword = 1"
-$secpol = $secpol -replace "AuditSystemEvents = \d+", "AuditSystemEvents = 3"
-$secpol = $secpol -replace "AuditLogonEvents = \d+", "AuditLogonEvents = 3"
-$secpol = $secpol -replace "AuditObjectAccess = \d+", "AuditObjectAccess = 3"
-$secpol = $secpol -replace "AuditPrivilegeUse = \d+", "AuditPrivilegeUse = 3"
-$secpol = $secpol -replace "AuditPolicyChange = \d+", "AuditPolicyChange = 3"
-$secpol = $secpol -replace "AuditAccountManage = \d+", "AuditAccountManage = 3"
-$secpol = $secpol -replace "AuditProcessTracking = \d+", "AuditProcessTracking = 3"
-$secpol = $secpol -replace "AuditDSAccess = \d+", "AuditDSAccess = 3"
+
+# Sets all audit policies to log both successes and failures (Simplifies code)
+auditpol /set /category:* /success:enable /failure:enable
 
 # There are some other policies I'd like to change but I kinda don't know how
+
+# Set Minimum Password Length Audit to 14 (Not entirely sure what this does but it gets me points: I think it logs when applications accept passwords shorter than 12 characters?)
+Set-Itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\SAM" -Name "MinimumPasswordLengthAudit" -value "12"
+
+# Sets account lockout policy configures in lockout.inf
+secedit /configure /db c:\windows\security\local.sdb /cfg "$PSScriptRoot\lockout.inf" /areas SECURITYPOLICY
+
+# Some more policies: Thanks to https://github.com/Adamapb/WIndows_Stuff/
+ # Disable Autologin of Admins
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_DWORD /d 0 /f
+# Don't display last user
+reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v dontdisplaylastusername /t REG_DWORD /d 1 /f
+# Enable UAC on high
+reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 1 /f
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Type DWord -Value 5
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "PromptOnSecureDesktop" -Type DWord -Value 1
+reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v PromptOnSecureDesktop /t REG_DWORD /d 1 /f
+# Enable CTRL+ALT+DEL
+reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v DisableCAD /t REG_DWORD /d 0 /f
+# Disable machine account password changes
+reg add HKLM\SYSTEM\CurrentControlSet\services\Netlogon\Parameters /v DisablePasswordChange /t REG_DWORD /d 1 /f
+
+# Enable automatic updates (As much as can be done on windows jiprgjeijojnhegor I hate windows)
+reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU /v AutoInstallMinorUpdates /t REG_DWORD /d 1 /f
+reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU /v NoAutoUpdate /t REG_DWORD /d 0 /f
+reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU /v AUOptions /t REG_DWORD /d 4 /f
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update" /v AUOptions /t REG_DWORD /d 4 /f
+reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate /v DisableWindowsUpdateAccess /t REG_DWORD /d 0 /f
+reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate /v ElevateNonAdmins /t REG_DWORD /d 0 /f
+reg add HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer /v NoWindowsUpdate /t REG_DWORD /d 0 /f
+reg add "HKLM\SYSTEM\Internet Communication Management\Internet Communication" /v DisableWindowsUpdateAccess /t REG_DWORD /d 0 /f
+reg add HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\WindowsUpdate /v DisableWindowsUpdateAccess /t REG_DWORD /d 0 /f
 
 # Clean up
 $secpol | Set-Content $secpolTempFile
@@ -35,6 +65,14 @@ Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
 Dism /Online /Enable-Feature /FeatureName:Windows-Defender-Features
 Dism /Online /Enable-Feature /FeatureName:Windows-Defender
 Dism /Online /Enable-Feature /FeatureName:Windows-Defender-Gui
+# Enable Windows Defender registry keys that may have been changed
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" /v "ServiceKeepAlive" /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableIOAVProtection" /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v "DisableRealtimeMonitoring" /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "CheckForSignaturesBeforeRunningScan" /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan" /v "DisableHeuristics" /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Attachments" /v "ScanWithAntiVirus" /t REG_DWORD /d 3 /f
 
 # Handle parameters
 param (
